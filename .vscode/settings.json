@@ -1,0 +1,11 @@
+{
+  "runOnSave.commands": [
+    {
+      "match": ".*\\.rs$",
+      "command": "cd ${workspaceFolder} && cargo fmt -- ${file}",
+      "runIn": "backend",
+      "runningStatusMessage": "Formatting ${fileBasename}",
+      "finishStatusMessage": "${fileBasename} formatted"
+    },
+  ]
+}
