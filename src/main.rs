@@ -73,6 +73,35 @@ impl World {
         self.cells[row as usize][column as usize] = value;
     }
 
+    fn count_living_neighbours(&self, row: u32, column: u32) -> u32 {
+        let mut result = 0;
+        if self.is_alive(row - 1, column - 1) {
+            result += 1
+        }
+        if self.is_alive(row - 1, column) {
+            result += 1
+        }
+        if self.is_alive(row - 1, column + 1) {
+            result += 1
+        }
+        if self.is_alive(row, column - 1) {
+            result += 1
+        }
+        if self.is_alive(row, column + 1) {
+            result += 1
+        }
+        if self.is_alive(row + 1, column - 1) {
+            result += 1
+        }
+        if self.is_alive(row + 1, column) {
+            result += 1
+        }
+        if self.is_alive(row + 1, column + 1) {
+            result += 1
+        }
+        result
+    }
+
     fn for_each_cell<F>(&self, mut func: F)
     where
         F: FnMut(u32, u32),
@@ -136,6 +165,31 @@ fn implements_display_trait() {
     world.update_cell(0, 0, true);
     world.update_cell(9, 9, true);
 
-    println!();
-    println!("Print World {}", world);
+    println!("\nPrint World {}\n", world);
+}
+
+#[test]
+fn counts_living_diagonal_neighbours() {
+    let mut world = World::new(3, 3);
+
+    world.update_cell(0, 0, true);
+    world.update_cell(0, 2, true);
+    world.update_cell(2, 0, true);
+    world.update_cell(2, 2, true);
+
+    println!("\nPrint World {}\n", world);
+    assert_eq!(4, world.count_living_neighbours(1, 1))
+}
+
+#[test]
+fn counts_living_perpendicular_neighbours() {
+    let mut world = World::new(3, 3);
+
+    world.update_cell(0, 1, true);
+    world.update_cell(1, 0, true);
+    world.update_cell(1, 2, true);
+    world.update_cell(2, 1, true);
+
+    println!("\nPrint World {}\n", world);
+    assert_eq!(4, world.count_living_neighbours(1, 1))
 }
