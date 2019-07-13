@@ -1,6 +1,7 @@
 extern crate piston_window;
 
 use piston_window::*;
+use std::fmt;
 // use std::thread;
 
 fn main() {
@@ -78,11 +79,35 @@ impl World {
     {
         let rows = self.rows;
         let columns = self.columns;
-        for i in 0..rows - 1 {
-            for j in 0..columns - 1 {
+        for i in 0..rows {
+            for j in 0..columns {
                 func(i, j);
             }
         }
+    }
+}
+
+impl fmt::Display for World {
+    // This trait requires `fmt` with this exact signature.
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        // Write strictly the first element into the supplied output
+        // stream: `f`. Returns `fmt::Result` which indicates whether the
+        // operation succeeded or failed. Note that `write!` uses syntax which
+        // is very similar to `println!`.
+
+        let mut output = String::new();
+
+        let rows = self.rows;
+        let columns = self.columns;
+        for i in 0..rows {
+            output.push_str("\n");
+            for j in 0..columns {
+                let cell = if self.is_alive(i, j) { "x" } else { "o" };
+                output.push_str(cell);
+            }
+        }
+
+        write!(f, "{}", output)
     }
 }
 
@@ -102,4 +127,15 @@ fn updates_cell_at_given_coordinates() {
 
     assert_eq!(true, world.is_alive(0, 0));
     assert_eq!(true, world.is_alive(9, 9));
+}
+
+#[test]
+fn implements_display_trait() {
+    let mut world = World::new(10, 10);
+
+    world.update_cell(0, 0, true);
+    world.update_cell(9, 9, true);
+
+    println!();
+    println!("Print World {}", world);
 }
