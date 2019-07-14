@@ -2,7 +2,9 @@ extern crate piston_window;
 
 use piston_window::*;
 use std::fmt;
-// use std::thread;
+use std::thread;
+
+const MILLISECOND: u32 = 1000 * 1000;
 
 fn main() {
     let width = 640;
@@ -19,15 +21,16 @@ fn main() {
 
     let live = [0.0, 0.0, 0.0, 1.0];
     let dead = [1.0, 1.0, 1.0, 1.0];
-
+    //
     let mut world = World::new(rows, columns);
 
+    // Blinker
     world.update_cell(10, 10, true);
+    world.update_cell(11, 10, true);
+    world.update_cell(12, 10, true);
 
     while let Some(event) = window.next() {
-        // println!("render...");
-        // thread::sleep(std::time::Duration::new(1, 0));
-
+        println!("render...");
         window.draw_2d(&event, |context, graphics, _device| {
             clear([1.0; 4], graphics);
 
@@ -46,6 +49,8 @@ fn main() {
                 );
             })
         });
+        world = world.next_state();
+        thread::sleep(std::time::Duration::new(0, 100 * MILLISECOND));
     }
 }
 
@@ -75,31 +80,62 @@ impl World {
 
     fn count_living_neighbours(&self, row: u32, column: u32) -> u32 {
         let mut result = 0;
-        if self.is_alive(row - 1, column - 1) {
+        if (row > 0 && column > 0) && self.is_alive(row - 1, column - 1) {
             result += 1
         }
-        if self.is_alive(row - 1, column) {
+        if (row > 0) && self.is_alive(row - 1, column) {
             result += 1
         }
-        if self.is_alive(row - 1, column + 1) {
+        if (row > 0 && column < self.columns - 1) && self.is_alive(row - 1, column + 1) {
             result += 1
         }
-        if self.is_alive(row, column - 1) {
+        if (column > 0) && self.is_alive(row, column - 1) {
             result += 1
         }
-        if self.is_alive(row, column + 1) {
+        if (column < self.columns - 1) && self.is_alive(row, column + 1) {
             result += 1
         }
-        if self.is_alive(row + 1, column - 1) {
+        if (row < self.rows - 1 && column > 0) && self.is_alive(row + 1, column - 1) {
             result += 1
         }
-        if self.is_alive(row + 1, column) {
+        if (row < self.rows - 1) && self.is_alive(row + 1, column) {
             result += 1
         }
-        if self.is_alive(row + 1, column + 1) {
+        if (row < self.rows - 1 && column < self.columns - 1) && self.is_alive(row + 1, column + 1)
+        {
             result += 1
         }
         result
+    }
+
+    fn next_state_of_cell(&self, row: u32, column: u32) -> bool {
+        if self.is_alive(row, column) {
+            if self.count_living_neighbours(row, column) < 2 {
+                return false;
+            }
+            if self.count_living_neighbours(row, column) > 3 {
+                return false;
+            }
+        }
+
+        if !self.is_alive(row, column) {
+            if self.count_living_neighbours(row, column) != 3 {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    fn next_state(&self) -> World {
+        let mut new_world = World::new(self.rows, self.columns);
+        for row in 0..self.rows {
+            for column in 0..self.columns {
+                let cell_next_state = self.next_state_of_cell(row, column);
+                new_world.update_cell(row, column, cell_next_state);
+            }
+        }
+        new_world
     }
 
     fn for_each_cell<F>(&self, mut func: F)
@@ -186,10 +222,114 @@ fn counts_living_perpendicular_neighbours() {
     let mut world = World::new(3, 3);
 
     world.update_cell(0, 1, true);
+
     world.update_cell(1, 0, true);
     world.update_cell(1, 2, true);
     world.update_cell(2, 1, true);
 
     println!("\nPrint World {}\n", world);
     assert_eq!(4, world.count_living_neighbours(1, 1))
+}
+
+#[test]
+fn living_cell_with_less_than_2_neighbours_will_die() {
+    let mut world = World::new(3, 3);
+
+    world.update_cell(1, 1, true);
+
+    world.update_cell(1, 0, true);
+
+    println!("\nPrint World {}\n", world);
+    assert_eq!(false, world.next_state_of_cell(1, 1));
+}
+
+#[test]
+fn living_cell_with_2_neighbours_will_live() {
+    let mut world = World::new(3, 3);
+
+    world.update_cell(1, 1, true);
+
+    world.update_cell(0, 0, true);
+    world.update_cell(1, 0, true);
+
+    println!("\nPrint World {}\n", world);
+    assert_eq!(true, world.next_state_of_cell(1, 1));
+}
+
+#[test]
+fn living_cell_with_3_neighbours_will_live() {
+    let mut world = World::new(3, 3);
+
+    world.update_cell(1, 1, true);
+
+    world.update_cell(0, 0, true);
+    world.update_cell(1, 0, true);
+    world.update_cell(2, 0, true);
+
+    println!("\n\nPrint World {}\n", world);
+    assert_eq!(true, world.next_state_of_cell(1, 1));
+}
+
+#[test]
+fn living_cell_with_more_than_3_neighbours_will_die() {
+    let mut world = World::new(3, 3);
+
+    world.update_cell(1, 1, true);
+
+    world.update_cell(0, 0, true);
+    world.update_cell(1, 0, true);
+    world.update_cell(2, 0, true);
+    world.update_cell(0, 1, true);
+
+    println!("\nPrint World {}\n", world);
+    assert_eq!(false, world.next_state_of_cell(1, 1));
+}
+
+#[test]
+fn dead_cell_with_3_neighbours_will_live() {
+    let mut world = World::new(3, 3);
+
+    world.update_cell(1, 1, false);
+
+    world.update_cell(0, 0, true);
+    world.update_cell(1, 0, true);
+    world.update_cell(2, 0, true);
+
+    println!("\nPrint World {}\n", world);
+    assert_eq!(true, world.next_state_of_cell(1, 1));
+}
+
+#[test]
+fn dead_cell_becomes_living_cell() {
+    let mut world = World::new(3, 3);
+
+    world.update_cell(1, 1, false);
+
+    world.update_cell(0, 0, true);
+    world.update_cell(1, 0, true);
+    world.update_cell(2, 0, true);
+
+    let new_world = world.next_state();
+
+    println!("\nPrint World {}\n", world);
+    println!("\nPrint World {}\n", new_world);
+    assert_eq!(true, new_world.is_alive(1, 1));
+}
+
+#[test]
+fn living_cell_becomes_dead_cell() {
+    let mut world = World::new(3, 3);
+
+    world.update_cell(1, 1, true);
+
+    world.update_cell(0, 0, true);
+    world.update_cell(1, 0, true);
+    world.update_cell(2, 0, true);
+    world.update_cell(0, 1, true);
+
+    let new_world = world.next_state();
+
+    println!("\nPrint World {}\n", world);
+    println!("\nPrint World {}\n", new_world);
+    assert_eq!(false, new_world.is_alive(1, 1));
 }
